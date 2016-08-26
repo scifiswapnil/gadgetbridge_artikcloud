@@ -14,6 +14,11 @@ In this project well be sending and receiving data back-and-forth the artik clou
 * Android Smartphone 
 * artik cloud account
 
+## Change Logs
+
+## TO DO list
+
+
 ## Licence 
 
 The project is licenced under [MIT Licence](https://github.com/scifiswapnil/gadgetbridge_artikcloud/blob/master/LICENSE).
