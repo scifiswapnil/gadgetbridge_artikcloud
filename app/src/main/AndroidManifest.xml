@@ -16,6 +16,7 @@
     <uses-permission android:name="com.fsck.k9.permission.READ_MESSAGES" />
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
     <uses-feature
         android:name="android.hardware.bluetooth"
@@ -198,9 +199,6 @@
             </intent-filter>
         </service>
 
-        <receiver android:name=".externalevents.mybroadcastreceiver">
-            </receiver>
-
         <service android:name=".service.DeviceCommunicationService" />
 
         <receiver
@@ -251,7 +249,7 @@
             android:parentActivityName=".activities.ControlCenter" />
 
 
-        <receiver android:name=".activities.charts.LiveActivityFragment$temp" />
+
 
         <activity
             android:name=".activities.ConfigureAlarms"

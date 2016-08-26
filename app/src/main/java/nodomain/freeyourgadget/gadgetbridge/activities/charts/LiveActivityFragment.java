@@ -1,21 +1,30 @@
 package nodomain.freeyourgadget.gadgetbridge.activities.charts;
 
+import android.Manifest;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.graphics.Paint;
+import android.location.Criteria;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -32,7 +41,7 @@ import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.utils.Utils;
-import nodomain.freeyourgadget.gadgetbridge.externalevents.mybroadcastreceiver;
+
 
 import java.util.List;
 import org.slf4j.Logger;
@@ -46,6 +55,7 @@ import java.util.concurrent.TimeUnit;
 
 import nodomain.freeyourgadget.gadgetbridge.ArtikCloudSession;
 import nodomain.freeyourgadget.gadgetbridge.GBApplication;
+
 import nodomain.freeyourgadget.gadgetbridge.R;
 import nodomain.freeyourgadget.gadgetbridge.activities.HeartRateUtils;
 import nodomain.freeyourgadget.gadgetbridge.database.DBHandler;
@@ -56,15 +66,14 @@ import nodomain.freeyourgadget.gadgetbridge.model.Measurement;
 import nodomain.freeyourgadget.gadgetbridge.util.GB;
 
 
-public class LiveActivityFragment extends AbstractChartFragment{
-
-
+public class LiveActivityFragment extends AbstractChartFragment {
 
     private static final String TAG = LiveActivityFragment.class.getSimpleName();
     private static final Logger LOG = LoggerFactory.getLogger(LiveActivityFragment.class);
     private static final int MAX_STEPS_PER_MINUTE = 300;
     private static final int MIN_STEPS_PER_MINUTE = 60;
     private static final int RESET_COUNT = 10; // reset the max steps per minute value every 10s
+    int inc=0;
     private TextView text;
     private BarEntry totalStepsEntry;
     private BarEntry stepsPerMinuteEntry;
@@ -74,7 +83,6 @@ public class LiveActivityFragment extends AbstractChartFragment{
     private BarLineChartBase mStepsPerMinuteHistoryChart;
     private CustomBarChart mStepsPerMinuteCurrentChart;
     private CustomBarChart mTotalStepsChart;
-
     private final Steps mSteps = new Steps();
     private ScheduledExecutorService pulseScheduler;
     private int maxStepsResetCounter;
@@ -82,15 +90,13 @@ public class LiveActivityFragment extends AbstractChartFragment{
     private LineDataSet mHeartRateSet;
     private int mHeartRate;
 
+
     private static final String WS_HEADER = "WebSocket /websocket: ";
     private static final String LIVE_HEADER = "WebSocket /live: ";
     private static final String DEVICE_REGISTERED = "device registered ";
     private static final String CONNECTED = "connected ";
-    private AlarmManager alarmMgr;
-    private PendingIntent alarmIntent;
 
-
-    public  class Steps {
+    public class Steps {
         private int initialSteps;
 
         private int steps;
@@ -166,13 +172,6 @@ public class LiveActivityFragment extends AbstractChartFragment{
         }
     }
 
-    public static class temp extends BroadcastReceiver{
-        @Override
-        public  void onReceive(Context context, Intent intent) {
-            Log.v("alarm1", "we are here");
-        }
-    }
-
     private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -182,9 +181,16 @@ public class LiveActivityFragment extends AbstractChartFragment{
                     int steps = intent.getIntExtra(DeviceService.EXTRA_REALTIME_STEPS, 0);
                     long timestamp = intent.getLongExtra(DeviceService.EXTRA_TIMESTAMP, System.currentTimeMillis());
                     addEntries(steps, timestamp);
-                    //Log.v("alarm1"," getTotalSteps "+mSteps.getTotalSteps());
-                    //Log.v("alarm1"," getMaxStepsPerMinute "+mSteps.getMaxStepsPerMinute());
-
+                    if (inc >= 50)
+                    {
+                        Log.i("update", " getTotalSteps from " + mSteps.getTotalSteps());
+                        Log.i("update", " getMaxStepsPerMinute from " + mSteps.getStepsPerMinute(false));
+                        ArtikCloudSession.getInstance().sendRTsteps(Integer.toString( mSteps.getTotalSteps()),Integer.toString(mSteps.getStepsPerMinute(false)));
+                        inc=0;
+                        //Log.i("alarm1", " from " + inc);
+                    }
+                    else
+                        inc++;
                     break;
                 }
                 case DeviceService.ACTION_HEARTRATE_MEASUREMENT: {
@@ -212,11 +218,10 @@ public class LiveActivityFragment extends AbstractChartFragment{
 
     private void addEntries(int steps, long timestamp) {
         mSteps.updateCurrentSteps(steps, timestamp);
-        if (++maxStepsResetCounter > RESET_COUNT) {
+            if (++maxStepsResetCounter > RESET_COUNT) {
             maxStepsResetCounter = 0;
             mSteps.maxStepsPerMinute = 0;
         }
-        // Or: count down the steps until goal reached? And then flash GOAL REACHED -> Set stretch goal
         LOG.info("Steps: " + steps + ", total: " + mSteps.getTotalSteps() + ", current: " + mSteps.getStepsPerMinute(false));
 
 //        addEntries();
@@ -226,9 +231,6 @@ public class LiveActivityFragment extends AbstractChartFragment{
         mTotalStepsChart.setSingleEntryYValue(mSteps.getTotalSteps());
         YAxis stepsPerMinuteCurrentYAxis = mStepsPerMinuteCurrentChart.getAxisLeft();
         int maxStepsPerMinute = mSteps.getMaxStepsPerMinute();
-//        int extraRoom = maxStepsPerMinute/5;
-//        buggy in MPAndroidChart? Disable.
-//        stepsPerMinuteCurrentYAxis.setAxisMaxValue(Math.max(MIN_STEPS_PER_MINUTE, maxStepsPerMinute + extraRoom));
         LimitLine target = new LimitLine(maxStepsPerMinute);
         stepsPerMinuteCurrentYAxis.removeAllLimitLines();
         stepsPerMinuteCurrentYAxis.addLimitLine(target);
@@ -272,13 +274,16 @@ public class LiveActivityFragment extends AbstractChartFragment{
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         IntentFilter filterLocal = new IntentFilter();
+        Button btnShowLocation;
         filterLocal.addAction(DeviceService.ACTION_REALTIME_STEPS);
         filterLocal.addAction(DeviceService.ACTION_HEARTRATE_MEASUREMENT);
         filterLocal.addAction(GBApplication.ACTION_QUIT);
         heartRateValues = new ArrayList<>();
         LocalBroadcastManager.getInstance(getActivity()).registerReceiver(mReceiver, filterLocal);
         View rootView = inflater.inflate(R.layout.fragment_live_activity, container, false);
+        ///////////////////////
 
+        /////////////////////
         mStepsPerMinuteCurrentChart = (CustomBarChart) rootView.findViewById(R.id.livechart_steps_per_minute_current);
         mTotalStepsChart = (CustomBarChart) rootView.findViewById(R.id.livechart_steps_total);
         mStepsPerMinuteHistoryChart = (BarLineChartBase) rootView.findViewById(R.id.livechart_steps_per_minute_history);
@@ -287,14 +292,12 @@ public class LiveActivityFragment extends AbstractChartFragment{
         mStepsPerMinuteData = setupCurrentChart(mStepsPerMinuteCurrentChart, stepsPerMinuteEntry, getString(R.string.live_activity_current_steps_per_minute));
         mTotalStepsData = setupTotalStepsChart(mTotalStepsChart, totalStepsEntry, getString(R.string.live_activity_total_steps));
         setupHistoryChart(mStepsPerMinuteHistoryChart);
+        ///////////////////////////////
+        /*
 
-        Intent dialogIntent = new Intent(getActivity(), temp.class);
         alarmMgr = (AlarmManager) getActivity().getSystemService(Context.ALARM_SERVICE);
         alarmIntent = PendingIntent.getBroadcast(getActivity(), 0, dialogIntent,PendingIntent.FLAG_CANCEL_CURRENT);
         alarmMgr.setInexactRepeating(AlarmManager.RTC_WAKEUP,System.currentTimeMillis(), 10000, alarmIntent);
-
-        ///////////////////////////////
-        /*
         Button newb = (Button) rootView.findViewById(R.id.button);
         newb.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -308,15 +311,15 @@ public class LiveActivityFragment extends AbstractChartFragment{
             }
         });
         */
+
         ArtikCloudSession.getInstance().setContext(getActivity());
         return rootView;
     }
 
+
+
     @Override
     public void onPause() {
-        if (alarmMgr!= null) {
-            alarmMgr.cancel(alarmIntent);
-        }
         ArtikCloudSession.getInstance().disconnectDeviceChannelWS();
         LocalBroadcastManager.getInstance(getActivity()).unregisterReceiver(mWSUpdateReceiver);
         stopActivityPulse();
@@ -325,10 +328,7 @@ public class LiveActivityFragment extends AbstractChartFragment{
 
     @Override
     public void onResume() {
-        Intent dialogIntent = new Intent(getActivity(), temp.class);
-        alarmMgr = (AlarmManager) getActivity().getSystemService(Context.ALARM_SERVICE);
-        alarmIntent = PendingIntent.getBroadcast(getActivity(), 0, dialogIntent,PendingIntent.FLAG_CANCEL_CURRENT);
-        alarmMgr.setInexactRepeating(AlarmManager.RTC_WAKEUP,System.currentTimeMillis(), 10000, alarmIntent);
+
         LocalBroadcastManager.getInstance(getActivity()).registerReceiver(mWSUpdateReceiver,
                 makeWebsocketUpdateIntentFilter());
         ArtikCloudSession.getInstance().connectDeviceChannelWS();//non blocking
@@ -411,9 +411,7 @@ public class LiveActivityFragment extends AbstractChartFragment{
 
     @Override
     public void onDestroyView() {
-        if (alarmMgr!= null) {
-            alarmMgr.cancel(alarmIntent);
-        }
+
         Log.v("alarm1","stopped");
         onMadeInvisibleInActivity();
         LocalBroadcastManager.getInstance(getActivity()).unregisterReceiver(mReceiver);
@@ -626,5 +624,11 @@ public class LiveActivityFragment extends AbstractChartFragment{
         Log.d(TAG, status);
        // mWSReceived.setText(status);
     }
+
+
+    ///////////////////////////////////////
+
+
+
 
 }

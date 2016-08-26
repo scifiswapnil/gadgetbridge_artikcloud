@@ -237,10 +237,6 @@ public class ArtikCloudSession {
         new sendActionInBackground().execute();
     }
 
-
-
-
-
     /*
      * Example of Action sent to ARTIK Cloud over /websocket endpoint
      *  {
@@ -307,18 +303,11 @@ public class ArtikCloudSession {
         }
     }
 
-
-
-
     /*
      * Example of messagse sent to ARTIK Cloud over /websocket endpoint
 
      *
      */
-
-
-
-
     private void sendMsgInDeviceChannelWS(String steps,String totsteps) {
         MessageIn messagein = new MessageIn();
         Map<String,Object> map0 = new HashMap<String, Object>();
