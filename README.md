@@ -27,5 +27,4 @@ Do pull requests or mail me at [kalhapure.swapnil@gmail.com](kalhapure.swapnil@g
 
 ## Licence 
 
-The project is licenced under [MIT Licence](https://github.com/scifiswapnil/gadgetbridge_artikcloud/blob/master/LICENSE).
-Copyright (c) 2016 swapnil kalhapure.
+The project is licenced under [AGPLv3 Licence](https://github.com/scifiswapnil/gadgetbridge_artikcloud/blob/master/LICENSE).
